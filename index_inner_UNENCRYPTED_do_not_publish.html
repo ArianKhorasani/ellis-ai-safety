@@ -78,7 +78,7 @@
     <div class="legend" id="leg2"></div>
     <div class="grid2">
       <div><div class="cardttl">Regional composition (attributed share)</div><div class="cardsub" id="c2a-sub"></div><div id="c2a"></div></div>
-      <div><div class="cardttl">Europe vs US vs China over time</div><div class="cardsub" id="c2b-sub"></div><div id="c2b"></div></div>
+      <div><div class="cardttl">Europe vs US vs China over time</div><div class="cardsub" id="c2b-sub"></div><div class="legend" id="leg2b"></div><div id="c2b"></div></div>
     </div>
     <div class="banner" id="c2note"></div>
   </section>
@@ -197,22 +197,30 @@ function chart2a(){  // 100% stacked composition per venue
   $('#c2a-sub').textContent='attributed share · sums to 100% of identified';
 }
 function chart2b(){  // lines: US vs China vs Europe attributed share
-  const W=cw('c2b'), H=NARROW()?250:280, PL=38,PR=44,PT=16,PB=NARROW()?50:34;
+  $('#leg2b').innerHTML=[['US','us'],['China','cn'],['Europe','eu']]
+    .map(([lab,c])=>`<span><i style="background:var(--${c})"></i>${lab}</span>`).join('');
+  const W=cw('c2b'), H=NARROW()?254:284, PL=38,PR=16,PT=20,PB=NARROW()?50:34;
   const keys=['US','China','Europe'];
   const series=keys.map(k=>venues.map(v=>share(v,k)));
-  const max=Math.max(...series.flat())*1.2, min=0;
+  const max=Math.max(...series.flat())*1.22, min=0;
   const y=v=>PT+(H-PT-PB)*(1-(v-min)/(max-min)), x=i=>PL+(W-PL-PR)*(i/(venues.length-1));
   const ticks=[0,.25,.5,.75,1].map(f=>+(max*f).toFixed(0)).filter((v,i,a)=>a.indexOf(v)===i);
   let s=svg(W,H)+grid(PL,W-PR,y,ticks,t=>t+'%');
+  // dashed China so it stays distinguishable even where it sits on the US line
+  const DASH={US:'',China:'stroke-dasharray="5 3"',Europe:''};
+  // label offset: US above its line, China below, Europe above -> never collide (US>=China)
+  const OFF={US:-8,China:16,Europe:-8};
   keys.forEach((k,ki)=>{const pts=series[ki];
-    s+=`<path d="${pts.map((p,i)=>`${i?'L':'M'}${x(i)},${y(p)}`).join(' ')}" fill="none" stroke="${COL[k]}" stroke-width="2.5" stroke-linejoin="round"/>`;
-    pts.forEach((p,i)=>{s+=`<circle cx="${x(i)}" cy="${y(p)}" r="4" fill="var(--surface-1)" stroke="${COL[k]}" stroke-width="2.5" data-t="${venues[i].label} — ${k}: <b>${p.toFixed(1)}%</b>"/>`});
-    const ly=y(pts[pts.length-1]); s+=`<text x="${W-PR+4}" y="${ly+3}" class="vlab" fill="${COL[k]}" style="font-size:11px">${k==='China'?'CN':k==='Europe'?'EU':'US'}</text>`;
-    if(NARROW()) pts.forEach((p,i)=>{s+=`<text x="${x(i)}" y="${y(p)-9}" text-anchor="middle" class="vlab" style="font-size:9.5px;fill:${COL[k]}">${p.toFixed(0)}</text>`});
+    s+=`<path d="${pts.map((p,i)=>`${i?'L':'M'}${x(i)},${y(p)}`).join(' ')}" fill="none" stroke="${COL[k]}" stroke-width="2.5" stroke-linejoin="round" ${DASH[k]}/>`;});
+  keys.forEach((k,ki)=>{const pts=series[ki];
+    pts.forEach((p,i)=>{const xi=x(i);
+      s+=`<circle cx="${xi}" cy="${y(p)}" r="4" fill="var(--surface-1)" stroke="${COL[k]}" stroke-width="2.5" data-t="${venues[i].label} — ${k}: <b>${p.toFixed(1)}%</b>"/>`;
+      const anchor=i===0?'start':(i===pts.length-1?'end':'middle');
+      s+=`<text x="${xi}" y="${y(p)+OFF[k]}" text-anchor="${anchor}" class="vlab" style="font-size:10px;fill:${COL[k]}">${p.toFixed(0)}</text>`;});
   });
   venues.forEach((v,i)=>s+=xlab(x(i), H-PB+15, v.label));
   $('#c2b').innerHTML=s+'</svg>';
-  $('#c2b-sub').textContent='attributed share of identified papers';
+  $('#c2b-sub').textContent='attributed share · US solid, China dashed';
   const A=DATA.agg,id=A.identified||1;
   $('#c2note').innerHTML=`Across the sample, <b>${(A.attributed.US/id*100).toFixed(1)}%</b> of identified output is US, <b>${(A.attributed.China/id*100).toFixed(1)}%</b> China, <b>${(A.attributed.Europe/id*100).toFixed(1)}%</b> Europe, <b>${(A.attributed.Canada/id*100).toFixed(1)}%</b> Canada, <b>${(A.attributed.Other/id*100).toFixed(1)}%</b> rest of world &mdash; based on <b>${fmt(A.identified)}</b> papers with an identified affiliation (of <b>${fmt(A.matched)}</b> sampled; <b>${fmt(A.unknown)}</b> unknown).`;
 }
